@@ -272,33 +272,33 @@ public:
                 std::uninitialized_move_n(data_.GetAddress() + shift, size_ - shift, new_data.GetAddress() + shift + 1);
             }
             else {
+                std::uninitialized_copy_n(data_.GetAddress(), shift, new_data.GetAddress());
                 try {
-                    std::uninitialized_copy_n(data_.GetAddress(), shift, new_data.GetAddress());
                     std::uninitialized_copy_n(data_.GetAddress() + shift, size_ - shift, new_data.GetAddress() + shift + 1);
                 }
-                catch (...) {
-                    std::destroy_n(new_data.GetAddress() + shift, 1);
+                catch (...) {                   
+                    std::destroy_n(new_data.GetAddress(), shift);
                     throw;
                 }
             }
             std::destroy_n(begin(), size_);
             data_.Swap(new_data);
         }
-        else {
-            if (size_ != 0) {
-                new (data_ + size_) T(std::move(*(data_.GetAddress() + size_ - 1)));
+        else {            
+                T elem(std::forward<Args>(args)...);
+                new (data_ + size_) T(std::move(*(data_.GetAddress() + (size_ - 1))));
+                
                 try {
-                    std::move_backward(begin() + shift,
-                        data_.GetAddress() + size_,
-                        data_.GetAddress() + size_ + 1);
+                    std::move_backward(begin() + shift, data_.GetAddress() + (size_ - 1), data_.GetAddress() + size_);
                 }
                 catch (...) {
-                    std::destroy_n(data_.GetAddress() + size_, 1);
+                    std::destroy_n(data_.GetAddress() + (size_ - 1), 1);
                     throw;
-                }
-                std::destroy_at(begin() + shift);
-            }
-            result = new (data_ + shift) T(std::forward<Args>(args)...);
+                }              
+
+                data_[shift] = std::move(elem);
+                result = data_ + shift;     
+            
         }
         ++size_;
         return result;
